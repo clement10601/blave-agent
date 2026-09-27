@@ -1,0 +1,53 @@
+# WireGuard client on the node's network namespace: routes ONLY the Yuanta UAT
+# address (AllowedIPs in the Secret's wg0.conf) through the GCP egress VM, so the
+# broker sees the VM's static IP. Everything else keeps using the home line.
+# The Secret `blave-egress-wg` (key wg0.conf) is created by create-vm.sh.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blave-egress-wg
+  namespace: blave-agent
+  labels: {app: blave-egress-wg}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: blave-egress-wg}
+  template:
+    metadata:
+      labels: {app: blave-egress-wg}
+    spec:
+      hostNetwork: true
+      terminationGracePeriodSeconds: 10
+      containers:
+        - name: wg
+          image: alpine:3.22
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              apk add --no-cache wireguard-tools iptables >/dev/null
+              cp /secret/wg0.conf /etc/wireguard/wg0.conf && chmod 600 /etc/wireguard/wg0.conf
+              wg-quick down wg0 2>/dev/null || true
+              trap 'wg-quick down wg0; exit 0' TERM INT
+              wg-quick up wg0
+              while true; do
+                sleep 60 & wait $!
+                ip link show wg0 >/dev/null 2>&1 || { echo "wg0 gone"; exit 1; }
+              done
+          securityContext:
+            capabilities: {add: [NET_ADMIN]}
+          livenessProbe:
+            exec:
+              # handshake within the last 3 minutes (PersistentKeepalive 25s keeps it fresh)
+              command: ["sh", "-c", "t=$(wg show wg0 latest-handshakes | awk '{print $2}'); [ -n \"$t\" ] && [ $(( $(date +%s) - t )) -lt 180 ]"]
+            initialDelaySeconds: 60
+            periodSeconds: 60
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {memory: 64Mi}
+          volumeMounts:
+            - {name: conf, mountPath: /secret, readOnly: true}
+      volumes:
+        - name: conf
+          secret: {secretName: blave-egress-wg, defaultMode: 0400}
