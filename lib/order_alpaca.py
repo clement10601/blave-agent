@@ -240,7 +240,9 @@ def _norm(o):
 
 
 def get_order(env, order_id):
-    return _norm(_send("GET", f"/v2/orders/{order_id}", env, params={"nested": "true"}))
+    o = _norm(_send("GET", f"/v2/orders/{order_id}", env, params={"nested": "true"}))
+    o["paper"] = _base(env) == PAPER_URL
+    return o
 
 
 def confirm_order(env, order_id, timeout=30, rest_ok=False):

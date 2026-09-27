@@ -14,5 +14,7 @@ if [ ! -s "$F" ]; then
     unset k s
     echo "saved to $F"
 fi
-docker run --rm --env-file "$F" -v "$PWD:/repo:ro" -w /repo --entrypoint python3 \
-    local/blave-agent:v1 lib/alpaca_probe.py "$@"
+# scratch workspace so the guard can write state/audit.jsonl (the repo stays read-only)
+docker run --rm --env-file "$F" -v "$PWD:/repo:ro" --entrypoint sh local/blave-agent:v1 -c \
+    'mkdir -p /tmp/ws/state && cp -r /repo/lib /tmp/ws/ && cd /tmp/ws && python3 lib/alpaca_probe.py "$@"; rc=$?; [ -s state/audit.jsonl ] && { echo "--- audit"; cat state/audit.jsonl; }; exit $rc' \
+    sh "$@"
