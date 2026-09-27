@@ -1,0 +1,15 @@
+.git
+.github
+shell
+tests
+.env
+**/.env
+.venv
+**/__pycache__
+cache
+tmp
+strategies/*
+!strategies/TEMPLATE_A.py
+!strategies/TEMPLATE_C.py
+manager/*.json
+manager/*.jsonl

@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: blave-agent
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: blave-data
+  namespace: blave-agent
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: rustfs-nfs
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: blave-agent-config
+  namespace: blave-agent
+data:
+  # Used only on the very first start; afterwards the agent's set_model.py choice sticks.
+  BLAVE_DEFAULT_MODEL: claude-sonnet-5
+  BLAVE_VISION_MODEL: claude-sonnet-5
+  # Model ids prefixed litellm/ go to the in-cluster LiteLLM instead of the subscription.
+  BLAVE_LLM_BASE_URL: http://litellm.ai.svc.cluster.local:4000
+  BLAVE_MODEL_CATALOG: |
+    Claude (subscription): claude-sonnet-5, claude-opus-5-5, claude-haiku-4-5-20251001
+    LiteLLM (local Ollama): litellm/qwen3.8
+  TZ: Asia/Taipei
+  # K-lines from Binance public endpoints (what the desktop build does without a Blave account)
+  BLAVE_KLINE_SOURCE: binance
+---
+# Secret `blave-agent-secrets` is created by hand (see README) — keys:
+#   CLAUDE_CODE_OAUTH_TOKEN   from `claude setup-token` (Claude subscription)
+#   TELEGRAM_BOT_TOKEN        from @BotFather
+#   TELEGRAM_ALLOWED_CHAT_ID  your own Telegram chat id (optional but recommended)
+#   BLAVE_LLM_API_KEY         a LiteLLM virtual key (optional)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blave-agent
+  namespace: blave-agent
+  labels: {app: blave-agent}
+spec:
+  replicas: 1                     # never more: one bot poller, one order loop per account
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: blave-agent}
+  template:
+    metadata:
+      labels: {app: blave-agent}
+    spec:
+      securityContext:
+        fsGroup: 10001
+        seccompProfile: {type: RuntimeDefault}
+      terminationGracePeriodSeconds: 60
+      initContainers:
+        - name: fix-perms
+          image: local/blave-agent:v1
+          imagePullPolicy: Never
+          command: ["sh", "-c", "chown 10001:10001 /opt/blave-agent/data && chmod 0770 /opt/blave-agent/data || true"]
+          securityContext: {runAsUser: 0, runAsNonRoot: false}
+          volumeMounts:
+            - {name: data, mountPath: /opt/blave-agent/data}
+      containers:
+        - name: agent
+          image: local/blave-agent:v1
+          imagePullPolicy: Never
+          envFrom:
+            - configMapRef: {name: blave-agent-config}
+            - secretRef: {name: blave-agent-secrets}
+          securityContext:
+            runAsUser: 10001
+            runAsGroup: 10001
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 250m, memory: 768Mi}
+            limits: {cpu: "2", memory: 3Gi}
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", "pgrep -f supercronic >/dev/null && pgrep -f telegram_bridge.py >/dev/null"]
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            failureThreshold: 3
+          volumeMounts:
+            - {name: data, mountPath: /opt/blave-agent/data}
+      volumes:
+        - name: data
+          persistentVolumeClaim: {claimName: blave-data}
