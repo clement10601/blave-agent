@@ -26,6 +26,7 @@ _ELSEWHERE = {
     "capital": "references/capital-broker.md",
     "sinopac": "references/sinopac-broker.md",
     "president": "references/president-broker.md",
+    "yuanta": "references/yuanta-broker.md",
     "paper": "the web 自動下單 page (paper has no keys)",
 }
 _WS_MARK_RE = re.compile(r"\s")

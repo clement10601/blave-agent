@@ -49,6 +49,7 @@ CHOKE = {
     "binance": "_request", "bingx": "_request", "bybit": "_request",
     "gateio": "_request", "okx": "_request",
     "paper": "_gate", "capital": "_send", "sinopac": "place_odd_lot_order",
+    "yuanta": "_send",
 }
 HTTP = {"binance", "bingx", "bybit", "gateio", "okx"}
 # non-GET _send calls outside _request, each with the reason it is not an order
@@ -153,6 +154,18 @@ for v in libs:
                 gates = [c for c in ast.walk(fn) if _is_guard_call(c, "check_restart_stop")]
                 if not gates or min(c.lineno for c in gates) > n.lineno:
                     stray.append(f"place_order in {fn.name} without a prior check")
+    elif v == "yuanta":
+        # the order calls travel as string names through _call("trade", ...): only _send may make them
+        for n in ast.walk(t):
+            name = (n.value if isinstance(n, ast.Constant) and isinstance(n.value, str)
+                    else n.attr if isinstance(n, ast.Attribute) else None)
+            if name and name.startswith(("SendStockOrder", "SendFutureOrder")):
+                if getattr(_func_of(n), "name", None) != "_send":
+                    stray.append(f"{name} outside _send")
+            if (isinstance(n, ast.Call) and _call_name(n) == "_call" and n.args
+                    and isinstance(n.args[0], ast.Constant) and n.args[0].value == "trade"
+                    and getattr(_func_of(n), "name", None) != "_send"):
+                stray.append(f"trade _call in {_func_of(n).name}")
     elif v == "paper":
         for n in ast.walk(t):
             if isinstance(n, ast.Call) and _call_name(n) == "_new_order":
@@ -356,6 +369,30 @@ try:
         check(ok, f"sinopac: record present → {action} refused before the broker session opens")
 finally:
     sinopac._get_api = real_api
+    record(False)
+
+# Yuanta (pythonnet is imported lazily at login — the module imports without it)
+import lib.order_yuanta as yuanta  # noqa: E402
+
+opened = []
+real_api = yuanta._get_api
+yuanta._get_api = lambda env: opened.append(1) or (None, {})
+record(True)
+try:
+    calls = [("stock buy", lambda: yuanta.place_stock_order({}, "2330", "buy", 1)),
+             ("stock sell", lambda: yuanta.place_stock_order({}, "2330", "sell", 1000)),
+             ("stock diff", lambda: yuanta.place_order_yuanta({}, "2330", -50000)),
+             ("futures close", lambda: yuanta.place_futures_order({}, "TXF", "sell", 1, True)),
+             ("futures diff", lambda: yuanta.place_futures_diff({}, "TXF", 1))]
+    for label, call in calls:
+        try:
+            call()
+            ok = False
+        except guard.Halted:
+            ok = not opened
+        check(ok, f"yuanta: record present → {label} refused before the broker session opens")
+finally:
+    yuanta._get_api = real_api
     record(False)
 
 # Type B style: a strategy calling the lib directly (paper)

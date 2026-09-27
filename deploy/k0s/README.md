@@ -65,6 +65,15 @@ Telegram troubleshooting (`poll error` in the logs):
 - Kill switch: `kubectl -n blave-agent exec deploy/blave-agent -- touch state/HALT`.
 - Audit log: `workspace/state/audit.jsonl`.
 
+## Yuanta (元大) broker
+
+The image includes the .NET 8 runtime, `pythonnet` and Yuanta's SPARK API SDK at
+`/opt/yuanta-sdk` (sha256-pinned; `--build-arg YUANTA_SDK=0` leaves it out, ~0.5 GB).
+Order library: `lib/order_yuanta.py`; onboarding: `references/yuanta-broker.md`.
+Put the `.pfx` under the PVC workspace (e.g. `credentials/yuanta.pfx`) and the `yuanta_*`
+keys in `workspace/.env`, then `python3 lib/yuanta_probe.py` inside the pod. Without
+`YUANTA_LIVE=true` it talks to Yuanta's UAT, which only accepts a whitelisted fixed IP.
+
 ## Data
 
 Crypto K-lines come from Binance public endpoints (`BLAVE_KLINE_SOURCE=binance`).

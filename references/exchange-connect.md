@@ -9,7 +9,7 @@ just like a web handoff.
 This file is that procedure. The goal: `lib/account_{id}.py` + `lib/order_{id}.py`
 exist and `manager/reconciler.py` is wired through them.
 
-**Taiwan brokers (`sinopac`/`president`/`capital`) are NOT covered by this file, even
+**Taiwan brokers (`sinopac`/`president`/`capital`/`yuanta`) are NOT covered by this file, even
 though their web handoff message matches the trigger above** — see AGENTS.md's Broker
 Onboarding section and go straight to that broker's own reference doc instead. This
 matters most for `capital`: its libs ship pre-built (not agent-written), so rule 2's

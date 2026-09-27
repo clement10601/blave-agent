@@ -244,6 +244,7 @@ Weighting method → `--allocator`: built-in `equal` (default for a new portfoli
 **Web-initiated exchange connect:** when a chat message says the user just connected an exchange from the web (its API key already stored on the machine), follow `references/exchange-connect.md` (write `lib/account_{id}.py` if missing, PASS the read-only validation first, only then write `lib/order_{id}.py` + wire the reconciler; no orders ever). **Exception — Taiwan brokers route by VENUE, not by phrasing:** even when the message is this auto-generated web handoff (not the user typing "我想串群益" themselves), go straight to that broker's own reference doc instead — never `exchange-connect.md`, which mishandles them (detail in `exchange-connect.md` Rule 2):
 - **SinoPac (永豐金):** `references/sinopac-broker.md`
 - **President Futures (統一期貨):** `references/president-broker.md`
+- **Yuanta Securities (元大證券, 台股 + 期貨):** `references/yuanta-broker.md` — `lib/order_yuanta.py` ships implemented
 - **Capital Futures (群益期貨):** `references/capital-broker.md` (Windows workspace only)
 - **Paper trading (模擬交易, no keys):** ships pre-built (`lib/account_paper.py` + `lib/order_paper.py`) — **never hand-write a paper lib**; web-handoff steps, how fills are priced, and when to reset: `references/lib.md` › *Paper venue — web handoff*.
 

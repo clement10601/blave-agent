@@ -26,6 +26,31 @@ RUN python -m venv /opt/blave-agent/venv \
  && /opt/blave-agent/venv/bin/pip install --no-cache-dir \
       claude-agent-sdk cryptography pandas numpy matplotlib pyarrow requests python-dotenv scipy
 
+# Yuanta (元大) SPARK API for lib/order_yuanta.py: .NET 8 (ASP.NET Core) runtime + pythonnet
+# + the vendor's linux-x64 Python component. Not in the repo (vendor binary) — fetched and
+# pinned by sha256 here; a new Yuanta release fails the build until the hash is updated.
+# Build with --build-arg YUANTA_SDK=0 to leave it out.
+ARG YUANTA_SDK=1
+ARG YUANTA_SDK_URL=https://ys.yuanta.com.tw/quartet/api/YuantaSparkAPI_linux-x64_Python.zip
+ARG YUANTA_SDK_SHA256=0a5fb3f3ddce4a4409d9f01468fbe7402a37146c19307f4d6bc3abaad525df61
+ENV DOTNET_ROOT=/usr/share/dotnet \
+    DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+    YUANTA_SDK_DIR=/opt/yuanta-sdk
+RUN if [ "$YUANTA_SDK" = "1" ]; then \
+      apt-get update && apt-get install -y --no-install-recommends libicu72 unzip \
+      && rm -rf /var/lib/apt/lists/* \
+      && curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh \
+      && bash /tmp/dotnet-install.sh --channel 8.0 --runtime aspnetcore --install-dir "$DOTNET_ROOT" \
+      && rm /tmp/dotnet-install.sh \
+      && /opt/blave-agent/venv/bin/pip install --no-cache-dir pythonnet \
+      && curl -fsSL -o /tmp/yuanta.zip "$YUANTA_SDK_URL" \
+      && echo "$YUANTA_SDK_SHA256  /tmp/yuanta.zip" | sha256sum -c - \
+      && unzip -q /tmp/yuanta.zip -d /tmp/yuanta \
+      && mv /tmp/yuanta/YuantaSparkAPI_linux-x64_Python "$YUANTA_SDK_DIR" \
+      && rm -rf /tmp/yuanta /tmp/yuanta.zip \
+      && test -f "$YUANTA_SDK_DIR/YuantaSparkAPI.dll"; \
+    fi
+
 # This checkout becomes the seed for the workspace PVC on first start.
 COPY . /opt/blave-agent/src
 
