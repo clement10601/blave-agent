@@ -33,7 +33,7 @@ from lib.portfolio import load_portfolio_config, market_key, split_key, spot_sco
 
 _ENV_KEY_RE = re.compile(r"^\s*([A-Za-z0-9_]+)_API_KEY\s*=", re.IGNORECASE)
 _RESERVED_PREFIXES = {"BLAVE"}
-_NON_AUTO = {"sinopac", "president", "capital", "yuanta"}  # TW brokers: signed-diff contract
+_NON_AUTO = {"sinopac", "president", "capital", "yuanta", "alpaca"}  # TW brokers: signed-diff contract
 
 
 def read_env(path=".env"):

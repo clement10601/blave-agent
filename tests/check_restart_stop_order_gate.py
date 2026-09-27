@@ -49,9 +49,9 @@ CHOKE = {
     "binance": "_request", "bingx": "_request", "bybit": "_request",
     "gateio": "_request", "okx": "_request",
     "paper": "_gate", "capital": "_send", "sinopac": "place_odd_lot_order",
-    "yuanta": "_send",
+    "yuanta": "_send", "alpaca": "_request",
 }
-HTTP = {"binance", "bingx", "bybit", "gateio", "okx"}
+HTTP = {"binance", "bingx", "bybit", "gateio", "okx", "alpaca"}
 # non-GET _send calls outside _request, each with the reason it is not an order
 SEND_OUTSIDE_REQUEST_OK = {
     ("gateio", "set_leverage"): "leverage change — neither opens nor closes anything",
