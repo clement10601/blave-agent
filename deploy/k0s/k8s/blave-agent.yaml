@@ -61,6 +61,7 @@ spec:
         - name: fix-perms
           image: local/blave-agent:v1
           imagePullPolicy: Never
+          workingDir: /opt/blave-agent   # image WORKDIR is a symlink into the (still empty) PVC
           command: ["sh", "-c", "chown 10001:10001 /opt/blave-agent/data && chmod 0770 /opt/blave-agent/data || true"]
           securityContext: {runAsUser: 0, runAsNonRoot: false}
           volumeMounts:
@@ -69,6 +70,7 @@ spec:
         - name: agent
           image: local/blave-agent:v1
           imagePullPolicy: Never
+          workingDir: /opt/blave-agent   # entrypoint creates data/workspace, then cd's into it
           envFrom:
             - configMapRef: {name: blave-agent-config}
             - secretRef: {name: blave-agent-secrets}

@@ -28,6 +28,9 @@ Patches applied at build time: `patch_runtime.py` (fails the build if upstream c
 
 ## Deploy
 
+Interactive (prompts for sudo and each secret at hidden prompts, validates them, applies):
+`bash deploy/k0s/setup.sh`. Or by hand:
+
 ```bash
 # 1. build from the repo root and import into k0s containerd
 docker build -f deploy/k0s/Dockerfile -t local/blave-agent:v1 .
@@ -45,6 +48,13 @@ kubectl -n blave-agent create secret generic blave-agent-secrets \
 kubectl apply -f deploy/k0s/k8s/blave-agent.yaml
 kubectl -n blave-agent logs -f deploy/blave-agent
 ```
+
+Telegram troubleshooting (`poll error` in the logs):
+- `401` / `404`: bad token. It must be the full `<digits>:<secret>` line from BotFather.
+- `409 Conflict`: something else polls the same bot (Blave desktop/web pairing, a Claude
+  Telegram plugin, an old script). Telegram allows one poller per token. Revoke the token in
+  BotFather and put the new one only in the Secret.
+- `TELEGRAM_ALLOWED_CHAT_ID` is *your* id (@userinfobot), not the bot's (the digits before `:`).
 
 ## Trading safety
 

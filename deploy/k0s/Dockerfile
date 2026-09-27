@@ -47,5 +47,6 @@ RUN useradd --uid 10001 --user-group --no-create-home --home-dir /opt/blave-agen
  && chown blaveagent:blaveagent /opt/blave-agent/data
 
 USER 10001:10001
-WORKDIR /opt/blave-agent/workspace
+# Not workspace/: that symlink dangles until entrypoint creates data/workspace on the PVC
+WORKDIR /opt/blave-agent
 ENTRYPOINT ["/usr/bin/tini", "-g", "--", "/usr/local/bin/entrypoint.sh"]
